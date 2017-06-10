@@ -1557,7 +1557,7 @@ libbz2.a:
 		exit 1; \
 	fi
 	tar xvzf bzip2-$(BZIP2_VER).tar.gz
-	cd bzip2-$(BZIP2_VER) && make CFLAGS='-fPIC -O2 -g -D_FILE_OFFSET_BITS=64 ${EXTRA_CFLAGS}' AR='ar ${EXTRA_ARFLAGS}'
+	cd bzip2-$(BZIP2_VER) && make CFLAGS='-fPIC -O2 -g -D_FILE_OFFSET_BITS=64 ${EXTRA_CFLAGS}' AR='$(AR) ${EXTRA_ARFLAGS}' libbz2.a
 	cp bzip2-$(BZIP2_VER)/libbz2.a .
 
 libsnappy.a:
