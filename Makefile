@@ -1616,7 +1616,8 @@ $(java_static_libobjects): jls/%.o: %.cc $(JAVA_COMPRESSIONS)
 rocksdbjavastatic: $(java_static_libobjects)
 	cd java;$(MAKE) javalib;
 	rm -f ./java/target/$(ROCKSDBJNILIB)
-	$(CXX) $(CXXFLAGS) -I./java/. $(JAVA_INCLUDE) -shared -fPIC \
+	$(CXX) $(CXXFLAGS) -I./java/. $(JAVA_STATIC_INCLUDES) \
+	  $(JAVA_INCLUDE) -shared -fPIC \
 	  -Wl,--version-script=./java/librocksdbjni.version \
 	  -Wl,--gc-sections \
 	  -o ./java/target/$(ROCKSDBJNILIB) $(JNI_NATIVE_SOURCES) \
