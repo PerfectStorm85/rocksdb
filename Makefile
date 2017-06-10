@@ -274,6 +274,8 @@ LDFLAGS += $(LUA_LIB)
 
 endif
 
+OPT += -fvisibility=hidden -fvisibility-inlines-hidden \
+       -ffunction-sections -fdata-sections
 
 CFLAGS += $(WARNING_FLAGS) -I. -I./include $(PLATFORM_CCFLAGS) $(OPT)
 CXXFLAGS += $(WARNING_FLAGS) -I. -I./include $(PLATFORM_CXXFLAGS) $(OPT) -Woverloaded-virtual -Wnon-virtual-dtor -Wno-missing-field-initializers
@@ -1572,6 +1574,8 @@ rocksdbjavastatic: $(java_static_libobjects)
 	cd java;$(MAKE) javalib;
 	rm -f ./java/target/$(ROCKSDBJNILIB)
 	$(CXX) $(CXXFLAGS) -I./java/. $(JAVA_INCLUDE) -shared -fPIC \
+	  -Wl,--version-script=./java/librocksdbjni.version \
+	  -Wl,--gc-sections \
 	  -o ./java/target/$(ROCKSDBJNILIB) $(JNI_NATIVE_SOURCES) \
 	  $(java_static_libobjects) $(COVERAGEFLAGS) \
 	  $(JAVA_COMPRESSIONS) $(JAVA_STATIC_LDFLAGS)

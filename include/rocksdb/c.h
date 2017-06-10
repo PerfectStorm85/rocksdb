@@ -46,19 +46,8 @@
 
 #pragma once
 
-#ifdef _WIN32
-#ifdef ROCKSDB_DLL
-#ifdef ROCKSDB_LIBRARY_EXPORTS
-#define ROCKSDB_LIBRARY_API __declspec(dllexport)
-#else
-#define ROCKSDB_LIBRARY_API __declspec(dllimport)
-#endif
-#else
-#define ROCKSDB_LIBRARY_API
-#endif
-#else
-#define ROCKSDB_LIBRARY_API
-#endif
+#define ROCKSDB_LIBRARY_API \
+    __attribute__((visibility("default")))
 
 #ifdef __cplusplus
 extern "C" {
