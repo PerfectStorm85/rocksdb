@@ -15,6 +15,8 @@
 #include <stdint.h>
 #ifdef HAVE_SSE42
 #include <nmmintrin.h>
+#elif defined(__aarch64__)
+#include <arm_acle.h>
 #endif
 #include "util/coding.h"
 
@@ -291,7 +293,8 @@ static inline uint32_t LE_LOAD32(const uint8_t *p) {
   return DecodeFixed32(reinterpret_cast<const char*>(p));
 }
 
-#if defined(HAVE_SSE42) && (defined(__LP64__) || defined(_WIN64))
+#if (defined(__SSE4_2__) && (defined(__LP64__) || defined(_WIN64))) \
+  || defined(__aarch64__)
 static inline uint64_t LE_LOAD64(const uint8_t *p) {
   return DecodeFixed64(reinterpret_cast<const char*>(p));
 }
@@ -314,9 +317,8 @@ static inline void Slow_CRC32(uint64_t* l, uint8_t const **p) {
 }
 
 static inline void Fast_CRC32(uint64_t* l, uint8_t const **p) {
-#ifndef HAVE_SSE42
-  Slow_CRC32(l, p);
-#elif defined(__LP64__) || defined(_WIN64)
+#if defined(__SSE4_2__)
+#if defined(__LP64__) || defined(_WIN64)
   *l = _mm_crc32_u64(*l, LE_LOAD64(*p));
   *p += 8;
 #else
@@ -324,6 +326,17 @@ static inline void Fast_CRC32(uint64_t* l, uint8_t const **p) {
   *p += 4;
   *l = _mm_crc32_u32(static_cast<unsigned int>(*l), LE_LOAD32(*p));
   *p += 4;
+#endif
+
+#elif defined(__aarch64__)
+  asm(".arch armv8-a+crc");
+  __asm__("crc32cx %w[c], %w[c], %x[v]"
+          : [c]"+r"(*l)
+          : [v]"r"(LE_LOAD64(*p)));
+  *p += 8;
+
+#else
+  Slow_CRC32(l, p);
 #endif
 }
 
@@ -388,14 +401,30 @@ static bool isSSE42() {
 #endif
 }
 
+static bool isARMv8_CRC32() {
+#if defined(__aarch64__)
+  return true;
+#else
+  return false;
+#endif
+}
+
 typedef uint32_t (*Function)(uint32_t, const char*, size_t);
 
 static inline Function Choose_Extend() {
-  return isSSE42() ? ExtendImpl<Fast_CRC32> : ExtendImpl<Slow_CRC32>;
+  return (isSSE42() || isARMv8_CRC32()) ?
+    ExtendImpl<Fast_CRC32> : ExtendImpl<Slow_CRC32>;
 }
 
 bool IsFastCrc32Supported() {
+#if defined(__x86_64__)
   return isSSE42();
+#elif defined(__aarch64__)
+  return isARMv8_CRC32();
+#else
+  return false;
+#endif
+>>>>>>> 409735b7... crc32c: Aarch64+CRC32 optimization
 }
 
 Function ChosenExtend = Choose_Extend();
