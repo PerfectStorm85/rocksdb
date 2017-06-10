@@ -453,8 +453,6 @@ elif test -z "$PORTABLE"; then
     COMMON_FLAGS="$COMMON_FLAGS -mcpu=$POWER -mtune=$POWER "
   elif test -n "`echo $TARGET_ARCHITECTURE | grep ^s390x`"; then
     COMMON_FLAGS="$COMMON_FLAGS -march=z10 "
-  elif [ "$TARGET_OS" != AIX ] && [ "$TARGET_OS" != SunOS ]; then
-    COMMON_FLAGS="$COMMON_FLAGS -march=native "
   fi
 fi
 
