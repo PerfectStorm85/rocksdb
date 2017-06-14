@@ -17,6 +17,7 @@
 #include <nmmintrin.h>
 #elif defined(__aarch64__)
 #include <arm_acle.h>
+#include <arm_neon.h>
 #endif
 #include "util/coding.h"
 
@@ -293,8 +294,7 @@ static inline uint32_t LE_LOAD32(const uint8_t *p) {
   return DecodeFixed32(reinterpret_cast<const char*>(p));
 }
 
-#if (defined(__SSE4_2__) && (defined(__LP64__) || defined(_WIN64))) \
-  || defined(__aarch64__)
+#if defined(__SSE4_2__) && (defined(__LP64__) || defined(_WIN64))
 static inline uint64_t LE_LOAD64(const uint8_t *p) {
   return DecodeFixed64(reinterpret_cast<const char*>(p));
 }
@@ -327,14 +327,6 @@ static inline void Fast_CRC32(uint64_t* l, uint8_t const **p) {
   *l = _mm_crc32_u32(static_cast<unsigned int>(*l), LE_LOAD32(*p));
   *p += 4;
 #endif
-
-#elif defined(__aarch64__)
-  asm(".arch armv8-a+crc");
-  __asm__("crc32cx %w[c], %w[c], %x[v]"
-          : [c]"+r"(*l)
-          : [v]"r"(LE_LOAD64(*p)));
-  *p += 8;
-
 #else
   Slow_CRC32(l, p);
 #endif
@@ -383,6 +375,124 @@ uint32_t ExtendImpl(uint32_t crc, const char* buf, size_t size) {
   return static_cast<uint32_t>(l ^ 0xffffffffu);
 }
 
+#if defined(__aarch64__)
+#define CRC32C3X8(buffer, ITR) \
+  crc1 = __crc32cd(crc1, *((const uint64_t *)buffer + 42*1 + (ITR)));\
+  crc2 = __crc32cd(crc2, *((const uint64_t *)buffer + 42*2 + (ITR)));\
+  crc0 = __crc32cd(crc0, *((const uint64_t *)buffer + 42*0 + (ITR)));
+
+#define CRC32C7X3X8(buffer, ITR) do { \
+  CRC32C3X8(buffer, (ITR)*7+0) \
+  CRC32C3X8(buffer, (ITR)*7+1) \
+  CRC32C3X8(buffer, (ITR)*7+2) \
+  CRC32C3X8(buffer, (ITR)*7+3) \
+  CRC32C3X8(buffer, (ITR)*7+4) \
+  CRC32C3X8(buffer, (ITR)*7+5) \
+  CRC32C3X8(buffer, (ITR)*7+6) \
+} while(0)
+
+#define PREF4X64L1(buffer, PREF_OFFSET, ITR) \
+  __asm__("PRFM PLDL1KEEP, [%x[v],%[c]]"::[v]"r"(buffer), [c]"I"((PREF_OFFSET) + ((ITR) + 0)*64));\
+  __asm__("PRFM PLDL1KEEP, [%x[v],%[c]]"::[v]"r"(buffer), [c]"I"((PREF_OFFSET) + ((ITR) + 1)*64));\
+  __asm__("PRFM PLDL1KEEP, [%x[v],%[c]]"::[v]"r"(buffer), [c]"I"((PREF_OFFSET) + ((ITR) + 2)*64));\
+  __asm__("PRFM PLDL1KEEP, [%x[v],%[c]]"::[v]"r"(buffer), [c]"I"((PREF_OFFSET) + ((ITR) + 3)*64));
+
+#define PREF1KL1(buffer, PREF_OFFSET) \
+  PREF4X64L1(buffer,(PREF_OFFSET), 0) \
+  PREF4X64L1(buffer,(PREF_OFFSET), 4) \
+  PREF4X64L1(buffer,(PREF_OFFSET), 8) \
+  PREF4X64L1(buffer,(PREF_OFFSET), 12)
+
+#define PREF4X64L2(buffer,PREF_OFFSET, ITR) \
+  __asm__("PRFM PLDL2KEEP, [%x[v],%[c]]"::[v]"r"(buffer), [c]"I"((PREF_OFFSET) + ((ITR) + 0)*64));\
+  __asm__("PRFM PLDL2KEEP, [%x[v],%[c]]"::[v]"r"(buffer), [c]"I"((PREF_OFFSET) + ((ITR) + 1)*64));\
+  __asm__("PRFM PLDL2KEEP, [%x[v],%[c]]"::[v]"r"(buffer), [c]"I"((PREF_OFFSET) + ((ITR) + 2)*64));\
+  __asm__("PRFM PLDL2KEEP, [%x[v],%[c]]"::[v]"r"(buffer), [c]"I"((PREF_OFFSET) + ((ITR) + 3)*64));
+
+#define PREF1KL2(buffer,PREF_OFFSET) \
+  PREF4X64L2(buffer,(PREF_OFFSET), 0) \
+  PREF4X64L2(buffer,(PREF_OFFSET), 4) \
+  PREF4X64L2(buffer,(PREF_OFFSET), 8) \
+  PREF4X64L2(buffer,(PREF_OFFSET), 12)
+#endif /* defined(__aarch64__) */
+
+#if defined(__aarch64__)
+static uint32_t ARMv8_crc32Impl(uint32_t _crc, const char* buf, size_t size)
+{
+  register uint32_t crc = _crc ^ 0xffffffffu;
+  register const uint16_t *buf2;
+  register const uint32_t *buf4;
+  register const uint64_t *buf8;
+
+  uint32_t crc0, crc1, crc2;
+  int64_t length = (int64_t)size;
+  buf8 = (const  uint64_t *)(const void *)buf;
+
+  /* Calculate reflected crc with PMULL Instruction */
+  const poly64_t k1 = 0xe417f38a, k2 = 0x8f158014;
+  uint64_t t0, t1;
+
+  /* crc done "by 3" for fixed input block size of 1024 bytes */
+  while ((length -= 1024) >= 0) {
+    /* Prefetch data for following block to avoid cache miss */
+    PREF1KL2(buf,1024*3);
+    /* Do first 8 bytes here for better pipelining */
+    crc0 = __crc32cd(crc, *buf8++);
+    crc1 = 0;
+    crc2 = 0;
+
+    /* Process block inline
+    Process crc0 last to avoid dependency with above */
+    CRC32C7X3X8(buf8,0);
+    CRC32C7X3X8(buf8,1);
+    CRC32C7X3X8(buf8,2);
+    CRC32C7X3X8(buf8,3);
+    CRC32C7X3X8(buf8,4);
+    CRC32C7X3X8(buf8,5);
+
+    buf8 += 42*3;
+    /* Prefetch data for following block to avoid cache miss */
+    PREF1KL1((uint8_t *)buf8,1024);
+
+    /* Merge crc0 and crc1 into crc2
+        crc1 multiply by K2
+        crc0 multiply by K1 */
+
+    t1 = (uint64_t)vmull_p64(crc1, k2);
+    t0 = (uint64_t)vmull_p64(crc0, k1);
+    crc = __crc32cd(crc2, *buf8++);
+    crc1 = __crc32cd(0, t1);
+    crc ^= crc1;
+    crc0 = __crc32cd(0, t0);
+    crc ^= crc0;
+  }
+
+  if (!(length += 1024))
+    return (~crc);
+
+  while ((length -= sizeof(uint64_t)) >= 0) {
+    crc = __crc32cd(crc, *buf8++);
+  }
+
+  /* The following is more efficient than the straight loop */
+  buf4 = (const  uint32_t *)(const void *)buf8;
+  if (length & sizeof(uint32_t)) {
+    crc = __crc32cw(crc, *buf4++);
+  }
+
+  buf2 = (const  uint16_t *)(const void *)buf4;
+  if (length & sizeof(uint16_t)) {
+    crc = __crc32ch(crc, *buf2++);
+  }
+
+  buf = reinterpret_cast<const char *>(buf2);
+  if (length & sizeof(uint8_t))
+    crc = __crc32cb(crc, *buf);
+
+  return (crc ^ 0xffffffffu);
+}
+#endif /* defined(__aarch64__) */
+
 // Detect if SS42 or not.
 static bool isSSE42() {
 #ifndef HAVE_SSE42
@@ -401,26 +511,20 @@ static bool isSSE42() {
 #endif
 }
 
-static bool isARMv8_CRC32() {
-#if defined(__aarch64__)
-  return true;
-#else
-  return false;
-#endif
-}
-
 typedef uint32_t (*Function)(uint32_t, const char*, size_t);
 
 static inline Function Choose_Extend() {
-  return (isSSE42() || isARMv8_CRC32()) ?
-    ExtendImpl<Fast_CRC32> : ExtendImpl<Slow_CRC32>;
+#if defined(__aarch64__)
+  return ARMv8_crc32Impl;
+#endif
+  return isSSE42() ? ExtendImpl<Fast_CRC32> : ExtendImpl<Slow_CRC32>;
 }
 
 bool IsFastCrc32Supported() {
 #if defined(__x86_64__)
   return isSSE42();
 #elif defined(__aarch64__)
-  return isARMv8_CRC32();
+  return true;
 #else
   return false;
 #endif
