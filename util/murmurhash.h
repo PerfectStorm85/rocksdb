@@ -13,7 +13,7 @@
 #include <stdint.h>
 #include "rocksdb/slice.h"
 
-#if defined(__x86_64__)
+#if defined(__x86_64__) || defined(__aarch64__)
 #define MURMUR_HASH MurmurHash64A
 uint64_t MurmurHash64A ( const void * key, int len, unsigned int seed );
 #define MurmurHash MurmurHash64A
