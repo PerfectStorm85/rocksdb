@@ -1585,7 +1585,7 @@ liblz4.a:
 		exit 1; \
 	fi
 	tar xvzf lz4-$(LZ4_VER).tar.gz
-	cd lz4-$(LZ4_VER)/lib && make CFLAGS='-fPIC -O2 ${EXTRA_CFLAGS}' all
+	cd lz4-$(LZ4_VER)/lib && make CFLAGS='-fPIC -O2 ${EXTRA_CFLAGS}' liblz4.a
 	cp lz4-$(LZ4_VER)/lib/liblz4.a .
 
 libzstd.a:
@@ -1598,7 +1598,7 @@ libzstd.a:
 		exit 1; \
 	fi
 	tar xvzf zstd-$(ZSTD_VER).tar.gz
-	cd zstd-$(ZSTD_VER)/lib && make CFLAGS='-fPIC -O2 ${EXTRA_CFLAGS}' all
+	cd zstd-$(ZSTD_VER)/lib && make CFLAGS='-fPIC -O2 ${EXTRA_CFLAGS}' libzstd.a
 	cp zstd-$(ZSTD_VER)/lib/libzstd.a .
 
 # A version of each $(LIBOBJECTS) compiled with -fPIC and a fixed set of static compression libraries
