@@ -1622,6 +1622,7 @@ rocksdbjavastatic: $(java_static_libobjects)
 	  $(JAVA_INCLUDE) -shared -fPIC \
 	  -Wl,--version-script=./java/librocksdbjni.version \
 	  -Wl,--gc-sections \
+	  -Wl,--as-needed \
 	  -o ./java/target/$(ROCKSDBJNILIB) $(JNI_NATIVE_SOURCES) \
 	  $(java_static_libobjects) $(COVERAGEFLAGS) \
 	  $(JAVA_COMPRESSIONS) $(JAVA_STATIC_LDFLAGS)
