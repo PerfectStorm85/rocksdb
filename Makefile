@@ -368,6 +368,7 @@ TESTS = \
 	db_statistics_test \
 	db_write_test \
 	autovector_test \
+	blob_db_test \
 	cleanable_test \
 	column_family_test \
 	table_properties_collector_test \
@@ -405,6 +406,10 @@ TESTS = \
 	skiplist_test \
 	write_buffer_manager_test \
 	stringappend_test \
+	cassandra_format_test \
+	cassandra_merge_test \
+	cassandra_row_merge_test \
+	cassandra_serialize_test \
 	ttl_test \
 	date_tiered_test \
 	backupable_db_test \
@@ -992,6 +997,18 @@ option_change_migration_test: utilities/option_change_migration/option_change_mi
 	$(AM_LINK)
 
 stringappend_test: utilities/merge_operators/string_append/stringappend_test.o $(LIBOBJECTS) $(TESTHARNESS)
+	$(AM_LINK)
+
+cassandra_format_test: utilities/merge_operators/cassandra/cassandra_format_test.o $(LIBOBJECTS) $(TESTHARNESS)
+	$(AM_LINK)
+
+cassandra_merge_test: utilities/merge_operators/cassandra/cassandra_merge_test.o utilities/merge_operators/cassandra/test_utils.o $(LIBOBJECTS) $(TESTHARNESS)
+	$(AM_LINK)
+
+cassandra_row_merge_test: utilities/merge_operators/cassandra/cassandra_row_merge_test.o utilities/merge_operators/cassandra/test_utils.o $(LIBOBJECTS) $(TESTHARNESS)
+	$(AM_LINK)
+
+cassandra_serialize_test: utilities/merge_operators/cassandra/cassandra_serialize_test.o $(LIBOBJECTS) $(TESTHARNESS)
 	$(AM_LINK)
 
 redis_test: utilities/redis/redis_lists_test.o $(LIBOBJECTS) $(TESTHARNESS)
