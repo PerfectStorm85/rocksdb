@@ -339,6 +339,7 @@ TESTS = \
 	inlineskiplist_test \
 	env_basic_test \
 	env_test \
+	hash_test \
 	thread_local_test \
 	rate_limiter_test \
 	perf_context_test \
@@ -991,6 +992,9 @@ cache_test: cache/cache_test.o $(LIBOBJECTS) $(TESTHARNESS)
 	$(AM_LINK)
 
 coding_test: util/coding_test.o $(LIBOBJECTS) $(TESTHARNESS)
+	$(AM_LINK)
+
+hash_test: util/hash_test.o $(LIBOBJECTS) $(TESTHARNESS)
 	$(AM_LINK)
 
 option_change_migration_test: utilities/option_change_migration/option_change_migration_test.o db/db_test_util.o $(LIBOBJECTS) $(TESTHARNESS)
