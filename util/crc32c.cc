@@ -528,7 +528,6 @@ bool IsFastCrc32Supported() {
 #else
   return false;
 #endif
->>>>>>> 409735b7... crc32c: Aarch64+CRC32 optimization
 }
 
 Function ChosenExtend = Choose_Extend();
