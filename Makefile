@@ -364,6 +364,7 @@ TESTS = \
 	db_wal_test \
 	db_block_cache_test \
 	db_test \
+	db_blob_index_test \
 	db_bloom_filter_test \
 	db_iter_test \
 	db_log_iter_test \
@@ -480,6 +481,7 @@ TESTS = \
 	object_registry_test \
 	repair_test \
 	env_timed_test \
+	slice_test \
 
 PARALLEL_TEST = \
 	backupable_db_test \
@@ -1067,6 +1069,9 @@ db_test: db/db_test.o db/db_test_util.o $(LIBOBJECTS) $(TESTHARNESS)
 db_test2: db/db_test2.o db/db_test_util.o $(LIBOBJECTS) $(TESTHARNESS)
 	$(AM_LINK)
 
+db_blob_index_test: db/db_blob_index_test.o db/db_test_util.o $(LIBOBJECTS) $(TESTHARNESS)
+	$(AM_LINK)
+
 db_block_cache_test: db/db_block_cache_test.o db/db_test_util.o $(LIBOBJECTS) $(TESTHARNESS)
 	$(AM_LINK)
 
@@ -1433,6 +1438,9 @@ range_del_aggregator_test: db/range_del_aggregator_test.o db/db_test_util.o $(LI
 	$(AM_LINK)
 
 blob_db_test: utilities/blob_db/blob_db_test.o $(LIBOBJECTS) $(TESTHARNESS)
+	$(AM_LINK)
+
+slice_test: util/slice_test.o $(LIBOBJECTS) $(TESTHARNESS)
 	$(AM_LINK)
 
 #-------------------------------------------------
